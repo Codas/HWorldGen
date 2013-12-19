@@ -1,41 +1,43 @@
-{-# LANGUAGE BangPatterns              #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 module Main where
 
-import           AStar
-import qualified Data.ByteString              as BS
-import qualified Data.ByteString.Char8        as C8
-import           Data.Matrix                  as M
+import qualified Data.ByteString             as BS
+import qualified Data.ByteString.Char8       as C8
+import           Data.List                   (foldl1)
+import           Data.Matrix                 as M
 
+import           Control.Arrow
+import           Control.Parallel.Strategies
 import           Criterion.Config
-import           Criterion.Main
-import           Diagrams.Backend.SVG         (renderSVG)
-import           Diagrams.Backend.SVG.CmdLine
+import           Criterion.Main              as C
+import           Diagrams.Backend.SVG        (SVG, renderSVG)
 import           Diagrams.Prelude
 -- import           Debug.Trace           as D
+
+import           FR.AStar                    (findPath)
+import           FR.Poi                      (Road (..), Town (..), paint, tLoc)
+import           FR.Points                   (FaerunP (..), PLike (np, tp2))
+import           FR.Region                   (readWorld, roads, towns)
 
 main :: IO ()
 main = do
     m <- readWorld
-    let start = P 21 495 0
-        !end  = P 344 395 0
-        path  = findPath m start end
-        str   = map (\(P x y _) -> [x, y]) $ path
-        size  = Absolute
-        pathDiag = fromVertices (pathToPoints path) # strokeLine
-                   # lc red # lw 2
+    let paths = parMap rseq (\(R s e) -> ptp $ findPath m s e) roads
+        size  = Dims 804 804
+        pathDiag = position $ map (head &&& road) paths
+        pTowns = (position $ map ((tp2 . tLoc) &&& paint) towns)
 
     putStrLn "looking for path..."
-    print path
-    renderSVG "path.svg" size $ pathDiag `atop` square 804
+    print $ paths
+    renderSVG "path.svg" size $  pTowns `atop` pathDiag `atop` grid
     return ()
 
-pathToPoints path = reverse (map (\(P x y _) -> (fromIntegral x) ^& (804 - fromIntegral y)) path)
+ptp :: PLike p => [p] -> [P2]
+ptp = map tp2
 
-readWorld :: IO (Matrix Int)
-readWorld = do
-    bs <- BS.readFile "terrain.txt"
-    let rows  = C8.split '\n' bs
-        llist = map (C8.split ',') rows
-        m     = fromLists (map (map (read . C8.unpack)) llist :: [[Int]])
-    return m
+grid =  mconcat $ map (alignTL . lw 10 . lc gray) [h, v]
+  where v = hcat' (with & sep .~ 536 ) (replicate 25 (vrule 12864))
+        h = vcat' (with & sep .~ 536 ) (replicate 25 (hrule 12864))
+
+road :: [P2] -> Diagram SVG R2
+road path = fromVertices path # strokeLine # lc brown # lw 15

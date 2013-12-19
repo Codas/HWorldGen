@@ -1,12 +1,14 @@
 {-# LANGUAGE BangPatterns #-}
-module AStar where
+module FR.AStar (findPath) where
 
 import           Data.IntSet          (IntSet)
 import qualified Data.IntSet          as S
 import           Data.Matrix          (Matrix, ncols, nrows, (!))
 import qualified Data.PQueue.Prio.Min as Q
 -- import           Debug.Trace          as D
--- import           Prelude
+import           Prelude
+
+import           FR.Points
 
 data Point = P
              {-# UNPACK #-} !Int
@@ -17,15 +19,6 @@ instance Eq Point where
   (P a1 b1 _) == (P a2 b2 _) = a1 == a2 && b1 == b2
 instance Show Point where
   show (P x y c) = "(" ++ show x ++ "," ++ show y++"):" ++ show (round c :: Int)
-
-
-data DPoint  = DP
-               {-# UNPACK #-} !Double
-               {-# UNPACK #-} !Double
-               {-# UNPACK #-} !Double
-               deriving (Show, Ord)
-instance Eq DPoint where
-  (DP a1 b1 _) == (DP a2 b2 _) = a1 == a2 && b1 == b2
 
 type Map = Matrix Int
 
@@ -57,7 +50,7 @@ astar start end succ cost heur m
 
 
 heuristic :: Point -> Point -> Double
-heuristic (P u v _) (P x y _) = (sqrt((x' - u') ** 2 + (y' - v') ** 2)) * 90
+heuristic (P u v _) (P x y _) = (sqrt((x' - u') ** 2 + (y' - v') ** 2)) * 95
   where x'    = fromIntegral x
         y'    = fromIntegral y
         u'    = fromIntegral u
@@ -65,12 +58,12 @@ heuristic (P u v _) (P x y _) = (sqrt((x' - u') ** 2 + (y' - v') ** 2)) * 90
 
 los :: Map -> Point -> Point -> (Bool, Double)
 los m (P startX startY _) (P endX endY _) = (valid', fc)
-  where (vxi, vyi) = (endX - startX, endY - startY)
+  where (!vxi, !vyi) = (endX - startX, endY - startY)
         !switch = abs (endX - startX) < abs (endY - startY)
-        tileCost (tx, ty) = m ! if switch then (ty, tx) else (tx, ty)
-        !(vx, vy) = if switch then (vyi, vxi) else (vxi, vyi)
-        !(x0, y0) = if switch then (startY, startX) else (startX, startY)
-        !(x1, y1) = if switch then (endY, endX) else (endX, endY)
+        tileCost (!tx, !ty) = m ! if switch then (ty, tx) else (tx, ty)
+        (!vx, !vy) = if switch then (vyi, vxi) else (vxi, vyi)
+        (!x0, !y0) = if switch then (startY, startX) else (startX, startY)
+        (!x1, !y1) = if switch then (endY, endX) else (endX, endY)
         !sx  = signum vx   -- signum funktion, negativ: -1, 0: 0, positiv: +1
         !sy  = signum vy   -- Schritte in x, y richtung
         !dx = abs $ 2 * vx -- absolutes delta, wieso *2?
@@ -80,8 +73,8 @@ los m (P startX startY _) (P endX endY _) = (valid', fc)
         !w0  = 0
         !p   = (dy + dx) `div` 2
         !t   = (dy - dx) `div` 2
-        fc  = cost * ca
-        ca = if dx /= 0 then sqrt (fromIntegral dx ** 2 + fromIntegral dy ** 2) / fromIntegral dx else cost
+        !fc  = cost * ca
+        !ca = if dx /= 0 then sqrt (fromIntegral dx ** 2 + fromIntegral dy ** 2) / fromIntegral dx else cost
         !lowest = fromIntegral $ min (m ! (x0, y0)) (m ! (x1, y1)) -- lowest current cost.
         (valid', !cost) = los' x0 y0 c0 e0 w0 lowest True  -- begin iteration
         los' :: Int -> Int -> Int -> Int -> Int -> Int -> Bool -> (Bool, Double)
@@ -89,16 +82,12 @@ los m (P startX startY _) (P endX endY _) = (valid', fc)
             | x == x1   = (clear, fromIntegral nc)            -- When x == x1, return cleat status and costs
             | high - 15 > low = recurse False    -- when worse terrain encountered, set LOS to false, but continue
             | otherwise = recurse clear          -- we're not done yet, continue
-                where !ne | e > t = e - dy
-                          | e < t = e + dx
-                          | otherwise = e + dx - dy
-                      !nc | e > t && p + e < dy = c + w * c'
-                          | e < t = c + (1-w) * c'
-                          | otherwise = c + c'
+                where (!ne, !nc, !nw, !nx, !ny)
+                          | e > t && (p + e < dy) = ((e - dy), (c + w * c'), ((p + e) `div` dy), (x + sx), y)
+                          | e > t = ((e - dy), (c + c'), w, (x + sx), y)
+                          | e < t = ((e + dx), (c + (1-w) * c'), w, x, (y + sy))
+                          | otherwise = ((e + dx - dy), (c + c'), w, (x + sx), (y + sy))
                       !c' = tileCost (x, y) -- current field costs
-                      !nw = if (e > t) && (p + e < dy) then (p + e) `div` dy else w
-                      !nx = if e < t then x else x + sx
-                      !ny = if e > t then y else y + sy
                       !low' = min low c'                  -- new cost minimum
                       !high = c'  -- naming alias to make things more explicit
                       recurse = los' nx ny nc ne nw low'  -- continue with LOS status
@@ -131,7 +120,12 @@ cost m a@(P x0 y0 ca) b@(P x y cb) c@(P u v _)
         dx' = fromIntegral $ x0 - u
         dy' = fromIntegral $ y0 - v
 
-findPath :: Map -> Point -> Point -> [Point]
-findPath m start end = astar start (== end) succ (cost m) h m
- where succ  = successor m
-       h     = heuristic end
+findPath :: PLike p => Map -> p -> p -> [MapP]
+findPath m s e = tdp $ astar start (== end) succ (cost m) h m
+  where succ  = successor m
+        start = P sx sy 0
+        end   = P ex ey 0
+        h     = heuristic end
+        (MP sx sy) = mp s
+        (MP ex ey) = mp e
+        tdp = map (\(P x y _)-> (MP x y))
