@@ -18,19 +18,21 @@ import           FR.AStar                    (findPath)
 import           FR.Drawing                  (paint)
 import           FR.Poi                      (Road (..), Town (..), tLoc)
 import           FR.Points                   (FaerunP (..), PLike (np, tp2))
-import           FR.Region                   (roads, towns)
+import           FR.Region                   (mountains, roads, towns)
+import           FR.Terrain                  (Terrain (..))
 
 main :: IO ()
 main = do
     m <- readWorld
     let paths = parMap rseq (\(R s e) -> ptp $ findPath m s e) roads
-        size  = Dims 804 804
+        size  = Dims 1000 1000
         pathDiag = position $ map (head &&& road) paths
-        pTowns = (position $ map ((tp2 . tLoc) &&& paint) towns)
+        pTowns = (position $ map (tp2 &&& paint) towns)
+        terrain = (position $ map (tp2 &&& paint) mountains)
 
     putStrLn "looking for path..."
     print $ paths
-    renderSVG "path.svg" size $ pTowns `atop` pathDiag `atop` grid
+    renderSVG "path.svg" size $ pTowns `atop` pathDiag `atop` terrain `atop` grid
     return ()
 
 ptp :: PLike p => [p] -> [P2]
