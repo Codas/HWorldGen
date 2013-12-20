@@ -29,7 +29,7 @@ main = do
 
     putStrLn "looking for path..."
     print $ paths
-    -- renderSVG "path.svg" size $  pTowns `atop` pathDiag `atop` grid
+    renderSVG "path.svg" size $ pTowns `atop` pathDiag `atop` grid
     return ()
 
 ptp :: PLike p => [p] -> [P2]
