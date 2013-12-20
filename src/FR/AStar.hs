@@ -35,6 +35,7 @@ astar :: Point               -- ^ start point
 astar start end succ cost heur m
     = astar' (S.singleton $ toInt start) (Q.singleton (heur start) [start,start])
   where r = nrows m
+        {-# INLINE toInt #-}
         toInt (P x y _) = x * r + y
         astar' !seen !q
             -- | D.trace (show (end l) ++ " - " ++ (show $ Q.findMin q) ++ "\n") False = undefined
@@ -48,7 +49,7 @@ astar start end succ cost heur m
                 !q'    = dq `Q.union` Q.fromList pq
                 !seen' = seen `S.union` S.fromList (map toInt succs)
 
-
+{-# INLINE heuristic #-}
 heuristic :: Point -> Point -> Double
 heuristic (P u v _) (P x y _) = (sqrt((x' - u') ** 2 + (y' - v') ** 2)) * 95
   where x'    = fromIntegral x
@@ -56,10 +57,12 @@ heuristic (P u v _) (P x y _) = (sqrt((x' - u') ** 2 + (y' - v') ** 2)) * 95
         u'    = fromIntegral u
         v'    = fromIntegral v
 
+{-# INLINE los #-}
 los :: Map -> Point -> Point -> (Bool, Double)
 los m (P startX startY _) (P endX endY _) = (valid', fc)
   where (!vxi, !vyi) = (endX - startX, endY - startY)
         !switch = abs (endX - startX) < abs (endY - startY)
+        {-# INLINE tileCost #-}
         tileCost (!tx, !ty) = m ! if switch then (ty, tx) else (tx, ty)
         (!vx, !vy) = if switch then (vyi, vxi) else (vxi, vyi)
         (!x0, !y0) = if switch then (startY, startX) else (startX, startY)
@@ -92,16 +95,19 @@ los m (P startX startY _) (P endX endY _) = (valid', fc)
                       !high = c'  -- naming alias to make things more explicit
                       recurse = los' nx ny nc ne nw low'  -- continue with LOS status
 
+{-# INLINE successor #-}
 successor :: Map -> Point -> [Point]
 successor m = successor'
   where inM (P x y _) = y <= r && x <= c && y > 0 && x > 0 && (m ! (x, y) /= 255)
         !r = nrows m
         !c = ncols m
+        {-# INLINE successor' #-}
         successor' (P x y _) = filter inM candidates
           where candidates = [(P (x-1) (y-1) 0), (P x (y-1) 0), (P (x+1) (y-1) 0)
                              ,(P (x-1) y   0),                  (P (x+1) y   0)
                              ,(P (x-1) (y+1) 0), (P x (y+1) 0), (P (x+1) (y+1) 0)]
 
+{-# INLINE cost #-}
 cost :: Map -> Point -> Point -> Point -> [Point]
 cost m a@(P x0 y0 ca) b@(P x y cb) c@(P u v _)
   -- | D.trace ("coord: " ++ show [a,b,c] ++ " smaller: " ++ show (ca > cb) ++ " dir: " ++ show (round $ directCost + cb) ++ " los: " ++ show (round $ losD + ca)) False = path
