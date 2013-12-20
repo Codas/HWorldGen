@@ -15,9 +15,10 @@ import           Diagrams.Prelude
 -- import           Debug.Trace           as D
 
 import           FR.AStar                    (findPath)
-import           FR.Poi                      (Road (..), Town (..), paint, tLoc)
+import           FR.Drawing                  (paint)
+import           FR.Poi                      (Road (..), Town (..), tLoc)
 import           FR.Points                   (FaerunP (..), PLike (np, tp2))
-import           FR.Region                   (readWorld, roads, towns)
+import           FR.Region                   (roads, towns)
 
 main :: IO ()
 main = do
@@ -41,3 +42,11 @@ grid =  mconcat $ map (alignTL . lw 10 . lc gray) [h, v]
 
 road :: [P2] -> Diagram SVG R2
 road path = fromVertices path # strokeLine # lc brown # lw 15
+
+readWorld :: IO (Matrix Int)
+readWorld = do
+    bs <- BS.readFile "terrain.txt"
+    let rows  = C8.split '\n' bs
+        llist = map (C8.split ',') rows
+        m     = fromLists (map (map (read . C8.unpack)) llist :: [[Int]])
+    return m

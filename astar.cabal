@@ -16,7 +16,7 @@ extra-source-files:  terrain.txt
 cabal-version:       >=1.10
 
 Library
-  exposed-modules:     FR.AStar, FR.Points, FR.Poi, FR.Region, FR.Terrain
+  exposed-modules:     FR.AStar, FR.Points, FR.Poi, FR.Region, FR.Terrain, FR.Drawing
   -- other-extensions:    
   build-depends:       base, matrix, heaps, containers, bytestring, criterion,
                        bytestring, pqueue, diagrams, diagrams-lib, diagrams-svg,

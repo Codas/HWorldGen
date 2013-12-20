@@ -4,11 +4,8 @@ import           Diagrams.Backend.SVG (SVG)
 import           Diagrams.Prelude
 import           Graphics.SVGFonts
 
+import           FR.Drawing
 import           FR.Points
-
-text' t h c = stroke (textSVG' $ TextOpts t lin INSIDE_H KERN False s s )
-              # fc c # lc c # fillRule EvenOdd
-  where s = h * 20
 
 data Town = T { tLoc  :: NormalP
               , tName :: String
@@ -62,6 +59,3 @@ data Road = R { from :: NormalP
 
 (<~>) :: Town -> Town -> Road
 t1 <~> t2 = R (tLoc t1) (tLoc t2)
-
-class Paintable a where
-    paint :: a -> Diagram SVG R2

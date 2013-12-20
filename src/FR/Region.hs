@@ -1,4 +1,4 @@
-module FR.Region (readWorld, towns, roads) where
+module FR.Region (towns, roads) where
 
 import qualified Data.ByteString       as BS
 import qualified Data.ByteString.Char8 as C8
@@ -7,14 +7,6 @@ import           Data.Matrix           as M
 import           FR.Poi
 import           FR.Points
 import           FR.Terrain
-
-readWorld :: IO (Matrix Int)
-readWorld = do
-    bs <- BS.readFile "terrain.txt"
-    let rows  = C8.split '\n' bs
-        llist = map (C8.split ',') rows
-        m     = fromLists (map (map (read . C8.unpack)) llist :: [[Int]])
-    return m
 
 terrain = [ (Mountain [ np (FP 98  238), np (FP 126 239)
                       , np (FP 124 260), np (FP 131 267)
